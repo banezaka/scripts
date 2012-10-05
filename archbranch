@@ -1,0 +1,139 @@
+#!/bin/bash
+
+################################################################################
+# archbranch - Script for archiving git branches as tags
+#
+# Usage - $/your/location/of/script/archbranch [branchname] [defaultbranch]
+#
+# WARNING - This is still in the development phase and should be used with care,
+# do not use if you have not read through the script and understands the process.
+#
+# @author: Banezaka - banezaka@gmail.com
+# 
+################################################################################
+
+# todo: create a check for if the branch that going to be archived exists or not
+# todo: if somethings outputs fatal error or something like that, stop the script
+# todo: check if really necessary to do a fetch
+# todo: a check for if checkout or checkout -t-b is necessary
+# todo: use the fetch git branch function and save it in a variable and then run the script, then we dont need the second parameter
+
+firstParam=$1
+secondParam=$2
+
+if [ "$firstParam" != "" ]; then
+
+  # Checking if the archive tag exists locally
+  ArchiveExistsLocally=$(git tag | grep -w "archive/$firstParam")
+
+  # Checking if the branch exists locally
+  branchExistsLocally=$(git branch | grep -w "$firstParam")
+
+  # Checking if the branch is checked out locally
+  branchCheckedOutLocally=$(git status | grep -w "$firstParam")
+
+  # If the archive tag exists abort the script
+  if [ "$ArchiveExistsLocally" == "archive/$1" ]; then
+    echo -e "\e[00;31mThe branch already has a archive tag locally. Aborting script\e[00m"
+    exit 0
+  else
+    echo -e "\e[00;32mNo tag found locally. Continuing.\e[00m"
+  fi
+
+  read -p "You just told me to archive the branch $1 and then go back to the the branch $2. Are you sure you want to archive the branch $1 ? [y/n] " prompt
+
+  if [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]; then
+
+    # if the branch exists locally
+    if [ "$branchExistsLocally" != "" ]; then
+      # if the branch is checked out locally
+      if [ "$branchCheckedOutLocally" != "" ]; then
+        echo -e "Branch already checked out locally"
+      else
+	echo -e "Checking out the branch"
+        git checkout $firstParam
+      fi
+    else
+      echo -e "\n - Checking out the branch from remote"
+      git checkout --track -b $firstParam origin/$firstParam
+    fi
+
+    echo -e "\n - Pulling on branch $firstParam"
+    git pull origin $firstParam
+
+    echo -e "\n - Creating the tag archive/$firstParam"
+    git tag archive/$firstParam
+
+    # doing a git log and saving the values
+    rBranchLog=$(git log -n 10 --oneline origin/${1})
+    rArchiveLog=$(git log -n 10 --oneline archive/${1})
+
+    if [ "$rBranchLog" == "" ]; then
+      echo -e "I couldn't get the branch on origin"
+
+      # should not create a md5 of nothing
+      rBranchHash='nologtomd5'
+    else
+      echo -e "\n################################################### commits on branch origin/${1}"
+      echo -e "$rBranchLog \n"
+  
+      # if there is a log generate a md5 
+      rBranchHash=$(echo -n $rBranchLog | openssl md5)
+    fi
+
+    if [ "$rArchiveLog" == "" ]; then
+      echo -e "I couldnt get the archived branch"
+
+      # should not create a md5 of nothing
+      rArchiveHash='nologtomd5'
+    else
+      echo -e "################################################### commits on archive/${1}"
+      echo -e "$rArchiveLog \n"
+
+      # if there is a log generate a md5
+      rArchiveHash=$(echo -n $rArchiveLog | openssl md5)
+    fi
+
+    if [ "$rBranchHash" == "nologtomd5" ] || [ "$rArchiveHash" == "nologtomd5" ]; then
+      echo "Atleast one of the branches doesn't have a log to md5, no comparison will be made"
+    else
+      echo -e "\nHash for remote branch:  $rBranchHash"
+      echo -e "Hash for local archive:  $rArchiveHash\n"
+    fi
+
+    # comparing the hashes to see if the branch and the tag have the same log
+    if [ "$rBranchHash" == "$rArchiveHash" ]; then
+      echo -e '\e[00;32mThe branch hashes are identical\e[00m'
+    else
+      echo -e '\e[00;31mThe hash is different for the branches, you should not archive this branch, you need to check what the difference is between the archived tag and the branch on origin\e[00m'
+      # diff -y <(echo "$rBranchLog") <(echo "$vArchiveLog")
+    fi
+
+    echo -e "\n"
+
+    read -p "The branch $1 has now been tagged but not yet archived. Are you sure you want to delete the branch $1 ? [y/n] " prompt
+    if [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]; then
+      echo -e "\n - Pushing tags to remote"
+      git push origin archive/$1
+
+      echo -e "\n - Checking out $2"
+      git checkout $2
+
+      echo -e "\n - Removing the branch $1 locally"
+      git branch -D $1
+
+      echo -e "\n - Removing the branch $1 on remote"
+      git push origin :$1
+
+      echo -e "\n - The branch has now been archived"
+    else
+      echo -e '\n - Aborted. The branch was not removed locally or on the remote repository'
+      exit 0 
+    fi
+  else
+    echo -e '\n - Aborted archiving script'
+    exit 0
+  fi
+else
+  echo -e "No parameter provided, please provide branch name. Example $archive mybranch"
+fi
