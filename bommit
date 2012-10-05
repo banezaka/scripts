@@ -1,0 +1,28 @@
+#!/bin/bash
+
+#################################################################################
+# bommit - A simple script that prefixes your commit with the branch name your on
+#
+# If you want to run the script without writing the location to it add it to your 
+# path by going to /usr/local/bin and creating a soft symlink to the script or by
+# adding the script in that folder manually
+#
+# Usage - $ bommit 'Commit message'
+#
+# WARNING - This is still in the development phase and should be used with care,
+# do not use if you have not read through the script and understands the process.
+#
+# @author: Banezaka - banezaka@gmail.com
+#
+#################################################################################
+
+#fetching the argument as a variable
+commitMessage=${1}
+
+#fetchning the branch that you are standing on
+function parse_git_branch () {
+ git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ \1/'
+}
+
+#doing the commit with the branch first and the commit message afterwards
+git commit -m "$(parse_git_branch) - $commitMessage"

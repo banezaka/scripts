@@ -1,0 +1,35 @@
+#!/bin/bash
+
+#################################################################################
+#
+# If you want to run the script without writing the location to it add it to your 
+# path by going to /usr/local/bin and creating a soft symlink to the script or by
+# adding the script in that folder manually
+#
+# Usage - $ 
+#
+# WARNING - This is still in the development phase and should be used with care,
+# do not use if you have not read through the script and understands the process.
+#
+# @author: Banezaka - banezaka@gmail.com
+#
+#################################################################################
+
+# $fromfolder = $1
+filename=${1} 
+tofolder=${2}
+
+echo -e "\n - Copying the feature $filename to $tofolder"
+cp $filename $tofolder
+
+echo -e "\n - Moving to the targetfolder"
+cd $tofolder
+
+echo -e "\n - Extracting $filename"
+tar -xvf $filename
+
+echo -e "\n - Removing $filename"
+rm -f $filename
+
+#echo -e "\n - Removing hidden OS X files"
+#rm -f ._*
