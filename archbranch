@@ -23,25 +23,39 @@ secondParam=$2
 
 if [ "$firstParam" != "" ]; then
 
-  # Checking if the archive tag exists locally
-  ArchiveExistsLocally=$(git tag | grep -w "archive/$firstParam")
+  # making sure that I have all the remote branches
+  echo -e "\n - Making sure the branch $firstParam exists"
+  git fetch
+
+  # Checking if the branch exists anywhere
+  branchExistsStatus=$(git branch -a | grep -w "$firstParam")
 
   # Checking if the branch exists locally
   branchExistsLocally=$(git branch | grep -w "$firstParam")
+
+  # Checking if the archive tag exists locally
+  ArchiveExistsLocally=$(git tag | grep -w "archive/$firstParam")
 
   # Checking if the branch is checked out locally
   branchCheckedOutLocally=$(git status | grep -w "$firstParam")
 
   # If the archive tag exists abort the script
-  if [ "$ArchiveExistsLocally" == "archive/$1" ]; then
-    echo -e "\e[00;31mThe branch already has a archive tag locally. Aborting script\e[00m"
+  if [ "$ArchiveExistsLocally" == "archive/$firstParam" ]; then
+    echo -e "\e[00;31m - The branch already has a archive tag locally. Aborting script\e[00m"
     exit 0
   else
-    echo -e "\e[00;32mNo tag found locally. Continuing.\e[00m"
+    echo -e "\e[00;32m - No tag found locally. Continuing.\e[00m"
+  fi
+
+  # If the branch doesnt exist anywhere, abort the script
+  if [ "$branchExistsStatus" == "" ]; then
+    echo -e "\e[00;31m - No branch found with that name. Aborting script.\e[00m"
+    exit 0
+  else
+    echo -e "\e[00;32m - Branch exists either locally or on remote.\e[00m"
   fi
 
   read -p "You just told me to archive the branch $1 and then go back to the the branch $2. Are you sure you want to archive the branch $1 ? [y/n] " prompt
-
   if [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]; then
 
     # if the branch exists locally
@@ -65,8 +79,8 @@ if [ "$firstParam" != "" ]; then
     git tag archive/$firstParam
 
     # doing a git log and saving the values
-    rBranchLog=$(git log -n 10 --oneline origin/${1})
-    rArchiveLog=$(git log -n 10 --oneline archive/${1})
+    rBranchLog=$(git log -n 10 --oneline origin/$firstParam)
+    rArchiveLog=$(git log -n 10 --oneline archive/$firstParam)
 
     if [ "$rBranchLog" == "" ]; then
       echo -e "I couldn't get the branch on origin"
@@ -74,7 +88,7 @@ if [ "$firstParam" != "" ]; then
       # should not create a md5 of nothing
       rBranchHash='nologtomd5'
     else
-      echo -e "\n################################################### commits on branch origin/${1}"
+      echo -e "\n################################################### commits on branch origin/$firstParam"
       echo -e "$rBranchLog \n"
   
       # if there is a log generate a md5 
@@ -87,7 +101,7 @@ if [ "$firstParam" != "" ]; then
       # should not create a md5 of nothing
       rArchiveHash='nologtomd5'
     else
-      echo -e "################################################### commits on archive/${1}"
+      echo -e "################################################### commits on archive/$firstParam"
       echo -e "$rArchiveLog \n"
 
       # if there is a log generate a md5
@@ -114,16 +128,16 @@ if [ "$firstParam" != "" ]; then
     read -p "The branch $1 has now been tagged but not yet archived. Are you sure you want to delete the branch $1 ? [y/n] " prompt
     if [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]; then
       echo -e "\n - Pushing tags to remote"
-      git push origin archive/$1
+      git push origin archive/$firstParam
 
-      echo -e "\n - Checking out $2"
-      git checkout $2
+      echo -e "\n - Checking out $secondParam"
+      git checkout $secondParam
 
-      echo -e "\n - Removing the branch $1 locally"
-      git branch -D $1
+      echo -e "\n - Removing the branch $firstParam locally"
+      git branch -D $firstParam
 
-      echo -e "\n - Removing the branch $1 on remote"
-      git push origin :$1
+      echo -e "\n - Removing the branch $firstParam on remote"
+      git push origin :$firstParam
 
       echo -e "\n - The branch has now been archived"
     else
@@ -135,5 +149,5 @@ if [ "$firstParam" != "" ]; then
     exit 0
   fi
 else
-  echo -e "No parameter provided, please provide branch name. Example $archive mybranch"
+  echo -e "\e[00;31m\n - No parameter provided, please provide branch name and name of branch to go back to.\e[00m Example $archive mybranch master"
 fi
