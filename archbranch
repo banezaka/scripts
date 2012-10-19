@@ -12,15 +12,19 @@
 # 
 ################################################################################
 
-# todo: if somethings outputs fatal error or something like that, stop the script
 # todo: use the fetch git branch function and save it in a variable and then run the script, then we dont need the second parameter
 
 firstParam=$1
 secondParam=$2
 
+cAbort=$'\e[00;31m'
+cWarning=$'\e[00;33m'
+cOK=$'\e[00;32m'
+cReset=$'\e[00m'
+
 if [[ "$firstParam" == "" || "$secondParam" = "" ]]; then
   echo -e "\e[00;31m \n - You didn't give me the complete command.\e[00m"
-  echo -e " - If you want to do that next time you write 'archbranch [name_of_branch_to_archive] [finish branch]'"
+  echo -e " - If you want to do that next time you write 'archbranch [name_of_branch_to_archive] [home branch]'"
   echo -e " - I'll ask you a couple of questions instead."
   echo -e ""
 fi
@@ -39,14 +43,27 @@ if [ "$secondParam" == "" ]; then
   fi
 fi
 
+if [ "$firstParam" == "master" ]; then
+  read -p "$cWarning - You said that you want to archive the '$firstParam' branch. Are you sure you want to do that? It is very very very rarely done!$cReset [y/n] " prompt
+  if [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]; then
+    echo -e "$cWarning - Sure! I'll let you through, hope you know what you are doing!$cReset"
+  else
+    echo -e "$cOK - Good! You did the right thing!$cReset"
+    exit 0
+  fi
+fi
+
 if [ "$firstParam" != "" ]; then
 
-  # making sure that I have all the remote branches
-  echo -e "\n - Making sure the branch '$firstParam' exists"
+  # Updating the repo with a fetch so I get all branches and tags
+  echo -e "\n - Making sure the I have the latest branches and tags"
   git fetch
 
   # Checking if the branch exists anywhere
-  branchExistsStatus=$(git branch -a | grep -w "$firstParam")
+  #branchExistsStatus=$(git branch -a | grep -w "$firstParam")
+
+  # Checking if the branch exists remotely
+  branchExistsRemotely=$(git branch -r | grep -w "$firstParam")
 
   # Checking if the branch exists locally
   branchExistsLocally=$(git branch | grep -w "$firstParam")
@@ -57,6 +74,9 @@ if [ "$firstParam" != "" ]; then
   # Checking if the branch is checked out locally
   branchCheckedOutLocally=$(git status | grep -w "$firstParam")
 
+  # Checking if the default branch exists locally
+  homeBranchExistsLocally=$(git branch | grep -w "$secondParam")
+
   # If the archive tag exists abort the script
   if [ "$ArchiveExistsLocally" == "archive/$firstParam" ]; then
     echo -e "\e[00;31m - The branch '$firstParam' already has a archive tag locally. Aborting script\e[00m"
@@ -65,15 +85,25 @@ if [ "$firstParam" != "" ]; then
     echo -e "\e[00;32m - No tag found locally for branch '$firstParam'. Continuing.\e[00m"
   fi
 
-  # If the branch doesnt exist anywhere, abort the script
-  if [ "$branchExistsStatus" == "" ]; then
-    echo -e "\e[00;31m - The branch '$firstParam' was not found anywhere. Aborting script.\e[00m"
+  # If the branch doesnt exists on remote, abort the script
+  if [ "$branchExistsRemotely" == "" ]; then
+    echo -e "\e[00;31m - The branch '$firstParam' was not found on remote. Push it before you archive it. Aborting script.\e[00m"
     exit 0
   else
-    echo -e "\e[00;32m - Branch '$firstParam' found locally or on remote.\e[00m"
+    echo -e "\e[00;32m - Branch '$firstParam' found on remote.\e[00m"
   fi
 
-  read -p "You just told me to archive the branch '$firstParam' and then go back to the the branch '$secondParam'. Are you sure you want to archive the branch '$firstParam'? [y/n] " prompt
+  # If the default branch doesn't exists locally, abort the script
+  if [ "$homeBranchExistsLocally" == "" ]; then
+    echo -e "\e[00;31m - The branch '$secondParam' doesn't exist locally. I need a branch to default to after the script. Aborting script.\e[00m"
+      exit 0
+    else
+      echo -e "\e[00;32m - The finish branch '$secondParam' was found locally.\e[00m"
+  fi
+
+  echo -e "You just told me to archive the branch '$firstParam' and then go back to the the branch '$secondParam'"
+  read -p "$cWarning Are you sure you want to archive the branch '$firstParam'$cReset? [y/n] " prompt
+
   if [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]; then
 
     # if the branch exists locally
@@ -143,7 +173,7 @@ if [ "$firstParam" != "" ]; then
 
     echo -e "\n"
 
-    read -p "The branch '$firstParam' has now been tagged but not yet archived. Are you sure you want to delete the branch '$firstParam' ? [y/n] " prompt
+    read -p " - The branch '$firstParam' has now been tagged but not yet archived. Are you sure you want to delete the branch '$firstParam' ? [y/n] " prompt
     if [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]; then
       echo -e "\n - Pushing tag 'archive/$firstParam' to remote"
       git push origin archive/$firstParam
@@ -163,9 +193,9 @@ if [ "$firstParam" != "" ]; then
       exit 0 
     fi
   else
-    echo -e '\n - Aborted archbranch'
+    echo -e '\n - $cAbort Aborted archbranch.$cReset'
     exit 0
   fi
 else
-  echo -e "\e[00;31m\n - No parameter provided, please provide branch name and name of branch to go back to." '\e[00mExample $archive mybranch master'
+  echo -e "\e[00;31m\n - Necessary parameters not provided, please provide branch name and name of branch to go back to." '\e[00mExample $archive mybranch master'
 fi
