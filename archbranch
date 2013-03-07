@@ -24,7 +24,8 @@ cReset=$'\e[00m'
 
 if [[ "$firstParam" == "" || "$secondParam" = "" ]]; then
   echo -e "\e[00;31m \n - You didn't give me the complete command.\e[00m"
-  echo -e " - If you want to do that next time you write 'archbranch [name_of_branch_to_archive] [home branch]'"
+  echo -e " - If you want to do that next time you write 'archbranch [name_of_branch_to_archive] [home_branch]'"
+  echo -e " - The home branch is the branch I should go to when I have archived your branch."
   echo -e " - I'll ask you a couple of questions instead."
   echo -e ""
 fi
@@ -98,7 +99,7 @@ if [ "$firstParam" != "" ]; then
     echo -e "\e[00;31m - The branch '$secondParam' doesn't exist locally. I need a branch to default to after the script. Aborting script.\e[00m"
       exit 0
     else
-      echo -e "\e[00;32m - The finish branch '$secondParam' was found locally.\e[00m"
+      echo -e "\e[00;32m - The home branch '$secondParam' was found locally.\e[00m"
   fi
 
   echo -e "You just told me to archive the branch '$firstParam' and then go back to the the branch '$secondParam'"
@@ -189,11 +190,11 @@ if [ "$firstParam" != "" ]; then
 
       echo -e "\n - The branch '$firstParam' has now been archived"
     else
-      echo -e '\n - Aborted. The branch '$firstParam' was not removed locally or on the remote repository'
+      echo -e "\n - Aborted. The branch '$firstParam' was not removed locally or on the remote repository"
       exit 0 
     fi
   else
-    echo -e '\n - $cAbort Aborted archbranch.$cReset'
+    echo -e "\n - $cAbort Aborted archbranch.$cReset"
     exit 0
   fi
 else
